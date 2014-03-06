@@ -1,0 +1,102 @@
+/* Standalone version gameplay for Honors Project
+ * Note: this program utilizes Zen, so make sure to run this in a package that
+ * also contains Zen.java.
+ * */
+
+public class RunnerGame {
+	
+	public static void main(String[] args) {
+		
+		int x=20, y=280;												//position of block
+		int dx=10, dy=0;												//velocity of block
+		int[][] obstacles=new int[1][2];								//holds (x,y) position of each obstacle (temp max=1)
+		int[] maxY=new int[Zen.getZenWidth()];							//holds maximum allowed y for any x value
+		int status=1;													//game status (0 game over, 1 game running, 2 editing)
+		
+		obstacles=setObstacles(obstacles);								//initialize obstacle position based on user
+		maxY=setMaxY(obstacles);
+		
+		while(Zen.isRunning()) {										//game loop
+
+			draw(x,y,obstacles);									//draw all graphics
+			
+			status=collision(x,y,maxY);									//test for collision
+			
+			dx=updateXvel(x,dx,status);									//update velocity and position
+			dy=updateYvel(y,dy,status);
+			x=updateX(x,dx,status);
+			y=updateY(y,dy,status);
+			
+			Zen.sleep(20);												//prepare for next cycle
+			Zen.flipBuffer();
+		}
+		
+	}
+	
+	public static int[][] setObstacles(int[][] obs) {					//set positions of obstacles
+		for(int i=0;i<obs.length;i++) {
+			obs[i][0]=(int)(Zen.getZenWidth()*Math.random());
+			obs[i][1]=260;
+		}
+		return obs;
+	}
+	
+	public static int[] setMaxY(int[][] obs) {							//set minimum y for every x
+		int[] maxY=new int[Zen.getZenWidth()];
+		for(int i=0;i<Zen.getZenWidth();i++)
+			maxY[i]=280;
+		for(int j=0;j<obs.length;j++)
+			for(int k=obs[j][0];k<obs[j][0]+40;k++)
+				maxY[k]=obs[j][1]-20;
+		return maxY;	
+	}
+	
+	public static int collision(int x, int y, int[] maxY) {				//test for collision
+		if(y>maxY[x] || (x<Zen.getZenWidth()-20 && y>maxY[x+20])) {
+			Zen.sleep(100);
+			return 0;
+		}
+		else
+			return 1;
+	}
+	
+	public static void draw(int x, int y, int[][] obs) {				//draw graphics
+		Zen.setColor(200, 100, 50);										//background
+		Zen.fillRect(0, 0, Zen.getZenWidth(), Zen.getZenHeight());
+		Zen.setColor(0, 0, 0);											//floor
+		Zen.fillRect(0, 300, Zen.getZenWidth(), Zen.getZenHeight());
+		for(int i=0;i<obs.length;i++)									//obstacles
+			Zen.fillRect(obs[i][0], obs[i][1], 40, 40);
+		Zen.setColor(0, 200, 200);										//block
+		Zen.fillRect(x, y, 20, 20);
+	}
+	
+	public static int updateX(int x, int dx, int status) {				//update x position
+		if(status==0)
+			return 20;
+		else
+			return (x+dx)%Zen.getZenWidth();
+	}
+	
+	public static int updateY(int y, int dy, int status) {				//update y position
+		if(y+dy<280 && status!=0)										//make sure y is above floor
+			return y+dy;
+		else
+			return 280;
+	}
+	
+	public static int updateXvel(int x, int dx, int status) {			//update x velocity
+		return dx;
+	}
+	
+	public static int updateYvel(int y, int dy, int status) {			//update y velocity
+		if(status==0)
+			dy=0;
+		else if(Zen.isKeyPressed((char)32) && y==280)					//test for jump
+			dy=-12;
+		else if(y<280)													//gravity
+			dy+=1;
+		return dy;
+	}
+
+}
