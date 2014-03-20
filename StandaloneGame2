@@ -1,0 +1,184 @@
+/* Standalone version gameplay for Honors Project
+ * Note: this program utilizes Zen, so make sure to run this in a package that
+ * also contains Zen.java.
+ * */
+
+/* Fixes:
+ * maybe more complex color-coding: top of block is landing ability, majority is moving ability
+ * improve pause/reset response. Click every time instead of holding allowed?\
+ * make type into subclass of obstacle?
+ * */
+
+public class RunnerGame {
+	
+	public static void main(String[] args) {
+		
+		//size of player
+		final int PSIZE=20;
+		//size of obstacles
+		final int OSIZE=40;
+		//y position of floor
+		final int FLOOR=300;
+		//x velocity
+		final int DX=10;
+		//max number of obstacles at once
+		final int NUMOBSTACLES=2;
+		//initialized array of types of obstacles
+		final int[][] TYPE={{1,2}};
+		//initialize player
+		Player player=new Player(0,FLOOR-PSIZE,0,0);
+		//holds obstacles
+		Obstacles[] obstacles=new Obstacles[NUMOBSTACLES];
+		//holds maximum allowed y for any x value
+		int[] maxY=new int[Zen.getZenWidth()];
+		//level
+		int level=1;
+		//game status (reset, running, paused)
+		String status="paused";
+		
+		//move this into loop when multiple levels
+		//initialize obstacle position based on user
+		obstacles=setObstacles(obstacles,TYPE[level-1],FLOOR,OSIZE);
+		maxY=setMaxY(obstacles,TYPE[level-1],FLOOR,PSIZE,OSIZE);
+		
+		//game loop
+		while(Zen.isRunning()) {
+			//draw all graphics
+			draw(player.getX(),player.getY(),obstacles,FLOOR,PSIZE,OSIZE,status,level);
+			//test for collision
+			status=updateStatus(status,player.getY(),maxY[player.getX()],PSIZE);
+			//test for completed level
+			level+=updateLevel(player.getX(),player.getDx());
+			//update player
+			updatePlayer(player,maxY[player.getX()],maxY[0],PSIZE,DX,status);
+			//prepare for next cycle
+			Zen.sleep(20);
+			Zen.flipBuffer();
+		}
+		
+	}
+	
+	//set positions of obstacles
+	public static Obstacles[] setObstacles(Obstacles[] obs, int[] type, int floor, int osize) {
+		for(int i=0;i<obs.length;i++)
+			obs[i]=new Obstacles((int)((Zen.getZenWidth()-2*osize)*Math.random()+osize),floor-osize,type[i]);
+		return obs;
+	}
+	
+	//set minimum y for every x
+	public static int[] setMaxY(Obstacles[] obs, int[] type, int floor, int psize, int osize) {
+		int[] maxY=new int[Zen.getZenWidth()];
+		for(int i=0;i<Zen.getZenWidth();i++)
+			maxY[i]=floor-psize;
+		for(int j=0;j<obs.length;j++)
+			for(int k=obs[j].getX()-psize;k<=obs[j].getX()+osize;k++)
+				maxY[k]=obs[j].getY()-psize+type[j]-1;
+		return maxY;	
+	}
+	
+	//update game status
+	public static String updateStatus(String status, int y, int maxY, int psize) {
+		if(status.equals("paused")) {
+			if(Zen.isKeyPressed('r')) {
+				Zen.sleep(250);
+				return "running";
+			}
+			return "paused";
+		}
+		else if(Zen.isKeyPressed('r')) {
+			Zen.sleep(250);
+			return "paused";
+		}
+		//type of block encoded in maxY
+		else if(y>maxY || (y==maxY && maxY%10!=0)) {
+			Zen.sleep(500);
+			return "reset";
+		}
+		return "running";
+	}
+	
+	//draw graphics
+	public static void draw(int x, int y, Obstacles[] obs, int floor, int psize, int osize, String status, int level) {
+		//background
+		Zen.setColor(200, 100, 50);
+		Zen.fillRect(0, 0, Zen.getZenWidth(), Zen.getZenHeight());
+		//floor
+		Zen.setColor(0, 0, 0);
+		Zen.fillRect(0, floor, Zen.getZenWidth(), Zen.getZenHeight());
+		PixelatedText.drawPixelatedText("Level "+level,20,20,4);
+		//obstacles
+		for(int i=0;i<obs.length;i++) {
+			if(obs[i].getType()==1)
+				Zen.setColor(0, 0, 0);
+			else
+				Zen.setColor(200, 0, 0);
+			Zen.fillRect(obs[i].getX(), obs[i].getY(), osize, osize);
+		}
+		//player
+		Zen.setColor(0, 200, 200);
+		Zen.fillRect(x, y, psize, psize);
+		//pause
+		if(status.equals("paused")) {
+			Zen.setColor(0, 0, 0);
+			Zen.fillRect(Zen.getZenWidth()-80, 20, 20, 60);
+			Zen.fillRect(Zen.getZenWidth()-40, 20, 20, 60);
+			PixelatedText.drawPixelatedText("Hit r to pause",20,100,6);
+			PixelatedText.drawPixelatedText("and space to jump",20,140,6);
+		}
+	}
+	
+	//update level number
+	public static int updateLevel(int x, int dx) {
+		if(x+dx>=Zen.getZenWidth())
+			return 1;
+		return 0;
+	}
+	
+	//update position and velocity of player
+	public static void updatePlayer(Player player, int maxY, int initmaxY, int psize, int DX, String status) {
+		player.setX(updateX(player.getX(),player.getDx(),status));
+		player.setY(updateY(player.getY(),player.getDy(),maxY,initmaxY,status));
+		player.setDx(updateDx(DX,status));
+		player.setDy(updateDy(player.getY(),player.getDy(),maxY,status));
+	}
+	
+	//update x position
+	public static int updateX(int x, int dx, String status) {
+		if(status.equals("reset") || status.equals("paused"))
+			return 0;
+		return (x+dx)%Zen.getZenWidth();
+	}
+	
+	//update y position
+	public static int updateY(int y, int dy, int maxY, int initmaxY, String status) {
+		if(status.equals("reset") || status.equals("paused"))
+			return initmaxY;
+		else if(y+dy>maxY)
+			return maxY;
+		return y+dy;
+	}
+	
+	//update x velocity
+	public static int updateDx(int dx, String status) {
+		if(status.equals("paused"))
+			return 0;
+		return dx;
+	}
+	
+	//update y velocity
+	public static int updateDy(int y, int dy, int maxY, String status) {
+		if(status.equals("reset") || status.equals("paused"))
+			dy=0;
+		//test for jump (space)
+		else if(y==maxY) {
+			if(Zen.isKeyPressed((char)32))
+				dy=-12;
+			else
+				dy=0;
+		}
+		else if(y<maxY)
+			dy+=1;
+		return dy;
+	}
+
+}
