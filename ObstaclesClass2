@@ -1,0 +1,20 @@
+
+public class Obstacles {
+	private int x;
+	private int y;
+	private int type;
+	public Obstacles(int xx, int yy, int otype) {
+		x=xx;
+		y=yy;
+		type=otype;
+	}
+	public int getX() {
+		return x;
+	}
+	public int getY() {
+		return y;
+	}
+	public int getType() {
+		return type;
+	}
+}
